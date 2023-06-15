@@ -64,7 +64,15 @@ void Do_FFT_C2C_forward(cufftComplex *d_fft_output, cufftComplex *d_input_data, 
 // it in-place.
 void Do_FFT_C2C_inverse_inplace(cufftComplex *d_fft_in_out, int size_of_one_fft, int number_of_ffts){
     //write your function here
-
+	cufftHandle plan;
+	cufftResult error;
+	error = cufftPlan1d(&plan, size_of_one_fft, CUFFT_C2C, number_of_ffts);
+	if (CUFFT_SUCCESS != error) {
+		printf("CUFFT error: Plan creation failed");
+		return;
+	}
+	cufftExecC2C(plan, d_fft_in_out, d_fft_in_out, CUFFT_INVERSE);
+	cufftDestroy(plan);
 }
 
 
