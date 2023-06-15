@@ -38,7 +38,25 @@ double trapInt_OMP (double a, double b, int N) {
   double x;                      // integral variable
 
   // complete the body of the function
-  // ... //
+
+  // interval length
+  h = (b - a) / ((double) N);
+
+  // initial and final point only count with weight half
+  v = (f(a) + f(b)) / 2.0;
+
+  #pragma omp parallel shared(a,N,h,v) private(x,n)
+  {
+  #pragma omp for reduction(+:v)
+  // add the inner points
+  for (n=1; n<=N-1; n++) {
+    x = a + n*h;
+    v = v + f(x);
+  }
+  }
+
+  // scale by the interval width
+  v *= h;
 
   return v;
 }
