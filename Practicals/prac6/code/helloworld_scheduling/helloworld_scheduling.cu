@@ -38,6 +38,9 @@
 // write your kernel here
 
 //----------------------------------------------------------------------
+__global__ void helloworld_blocks_kernel(float *) {
+  printf("Hello world from block %d\n", blockIdx.x);
+}
 
 
 //----------------------------------------------------------------------
@@ -51,6 +54,9 @@
 // write your kernel here
 
 //----------------------------------------------------------------------
+__global__ void helloworld_blocks_and_threads_kernel(float *) {
+  printf("Hello world from block %d, thread %d\n", blockIdx.x, threadIdx.x);
+}
 
 
 //----------------------------------------------------------------------
@@ -72,7 +78,12 @@
 // write your kernel here
 
 //----------------------------------------------------------------------
-
+__global__ void helloworld_blocks_and_warps_kernel(float *) {
+  int warp = 1 + (int) (threadIdx.x / 32);
+  if (!(threadIdx.x % 32)) {
+    printf("Hello world from block %d, warp %d\n", blockIdx.x, warp);
+  }
+}
 
 int main(void) {
   // initiate GPU
@@ -100,6 +111,16 @@ int main(void) {
   // put your code here
   
   //----------------------------------------------------------------------
+  /*
+  float *h_x, *d_x;
+  int nblocks = 10, nthreads = 1, nsize = 10 * 1;
+  h_x = (float *) malloc(nsize * sizeof(float));
+  cudaMalloc((void **) &d_x, nsize * sizeof(float));
+  helloworld_blocks_kernel<<<nblocks, nthreads>>>(d_x);
+  cudaMemcpy(h_x, d_x, nsize * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(d_x);
+  free(h_x);
+  */
 
   //----------------------------------------------------------------------
   // TASK 2.1: execute your "Hello world" kernel from TASK 2.0 on about  
@@ -115,7 +136,16 @@ int main(void) {
   // put your code here
   
   //----------------------------------------------------------------------
-  
+  /*
+  float *h_x, *d_x;
+  int nblocks = 5, nthreads = 10, nsize = 5 * 10;
+  h_x = (float *) malloc(nsize * sizeof(float));
+  cudaMalloc((void **) &d_x, nsize * sizeof(float));
+  helloworld_blocks_and_threads_kernel<<<nblocks, nthreads>>>(d_x);
+  cudaMemcpy(h_x, d_x, nsize * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(d_x);
+  free(h_x);
+  */
   
   //----------------------------------------------------------------------
   // TASK 3.1: execute your "Hello world" kernel from TASK 3.0 on about  
@@ -133,7 +163,16 @@ int main(void) {
   // put your code here
   
   //----------------------------------------------------------------------
+  float *h_x, *d_x;
+  int nblocks = 1, nthreads = 320, nsize = 1 * 320;
+  h_x = (float *) malloc(nsize * sizeof(float));
+  cudaMalloc((void **) &d_x, nsize * sizeof(float));
+  helloworld_blocks_and_warps_kernel<<<nblocks, nthreads>>>(d_x);
+  cudaMemcpy(h_x, d_x, nsize * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(d_x);
+  free(h_x);
   
+
   cudaDeviceReset();
   return (0);
 }

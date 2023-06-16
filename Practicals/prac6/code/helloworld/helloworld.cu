@@ -19,6 +19,9 @@
 // write your kernel here
 
 //----------------------------------------------------------------------
+__global__ void hello_world_kernel(float *x) {
+  printf("Hello World\n");
+}
 
 int main(void) {
   //----------------------------------------------------------------------
@@ -30,6 +33,11 @@ int main(void) {
   // write you GPU initialization here
 
   //----------------------------------------------------------------------
+  int deviceid = 0;
+  int devCount;
+  cudaGetDeviceCount(&devCount);
+  if (deviceid < devCount) cudaSetDevice(deviceid);
+  else return 1;
 
   
   
@@ -42,7 +50,15 @@ int main(void) {
   
   // execute your "Hello world" kernel here
   
-  //----------------------------------------------------------------------
+  //---------------------------------------------------------------------
+  float *h_x, *d_x;
+  int nblocks = 1, nthreads = 5, nsize = 1 * 5;
+  h_x = (float *) malloc(nsize * sizeof(float));
+  cudaMalloc((void **) &d_x, nsize * sizeof(float));
+  hello_world_kernel<<<nblocks, nthreads>>>(d_x);
+  cudaMemcpy(h_x, d_x, nsize * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(d_x);
+  free(h_x);
  
   cudaDeviceReset(); 
   return (0);

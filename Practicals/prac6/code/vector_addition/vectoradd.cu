@@ -75,6 +75,10 @@ int main(void) {
   // put your code here
 
   //----------------------------------------------------------------------
+  float * A, B, C;
+  A = (float *) malloc(N * sizeof(float));
+  B = (float *) malloc(N * sizeof(float));
+  C = (float *) malloc(N * sizeof(float));
   
   
   //----------------------------------------------------------------------
