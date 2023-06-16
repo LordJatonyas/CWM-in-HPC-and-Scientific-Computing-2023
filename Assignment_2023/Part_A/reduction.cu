@@ -3,7 +3,8 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
-
+#include <cuda.h>
+#include <curand.h>
 
 #define NUM_ELS 1024
 
@@ -13,22 +14,52 @@ __global__ void reduction(float *d_input, float *d_output)
 
     __shared__  float smem_array[NUM_ELS];
 
-    int tid = threadIdx.x;
+    // First add during Load to prevent Idle threads
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x * (blockDim.x* 2) + tid;
+    unsigned int gridSize = blockDim.x * 2 * gridDim.x;
 
     // first, each thread loads data into shared memory
 
     smem_array[tid] = d_input[tid];
 
     // next, we perform binary tree reduction
+    // to improve performance, I have opted to do loop unrolling
+    // and run multiple elements per thread
+    // (sequential addressing to resolve bank conflict)
 
-    for (int d = blockDim.x/2; d > 0; d /= 2) {
-      __syncthreads();  // ensure previous step completed 
-      if (tid<d)  smem_array[tid] += smem_array[tid+d];
+    while (i < NUM_ELS) {
+        smem_array[tid] += d_input[i] + d_input[i + blockDim.x];
+	i += gridSize;
+    }
+    __syncthreads();
+
+    if (blockDim.x >= 512) {
+	if (tid < 256) smem_array[tid] += smem_array[tid + 256];
+	__syncthreads();
+    }
+    if (blockDim.x >= 256) {
+	if (tid < 128) smem_array[tid] += smem_array[tid + 128];
+	__syncthreads();
+    }
+    if (blockDim.x >= 128) {
+	if (tid < 64) smem_array[tid] += smem_array[tid + 64];
+	__syncthreads();
     }
 
+    // Warp Reduction
+    if (tid < 32) {
+	if (blockDim.x >= 64) smem_array[tid] += smem_array[tid + 32];
+	if (blockDim.x >= 32) smem_array[tid] += smem_array[tid + 16];
+	if (blockDim.x >= 16) smem_array[tid] += smem_array[tid + 8];
+        if (blockDim.x >= 8) smem_array[tid] += smem_array[tid + 4];
+	if (blockDim.x >= 4) smem_array[tid] += smem_array[tid + 2];
+	if (blockDim.x >= 2) smem_array[tid] += smem_array[tid + 1];
+    }
+	
     // finally, first thread puts result into global memory
 
-    if (tid==0) d_output[0] = smem_array[0];
+    if (tid==0) d_output[blockIdx.x] = smem_array[0];
 }
 
 
@@ -46,9 +77,8 @@ int main( int argc, const char** argv)
 
     // initialise card
 
-
     num_els     = NUM_ELS;
-    num_threads = num_els;
+    num_threads = (num_els > 1024) ? 1024 : num_els;
     mem_size    = sizeof(float) * num_els;
 
     // allocate host memory to store the input data
@@ -71,7 +101,8 @@ int main( int argc, const char** argv)
 
     // execute the kernel
 
-    reduction<<<1,num_threads>>>(d_input,d_output);
+    // we need an integer for the number of blocks needed to execute reduction
+    reduction<<<(int) num_els/num_threads,num_threads>>>(d_input,d_output);
 
     // copy result from device to host
 
